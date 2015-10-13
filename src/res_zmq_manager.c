@@ -77,7 +77,7 @@ static int zmq_cmd_helper(int category, const char *event, char *content)
     char* tmp;
     int   ret;
 
-    ast_log(LOG_DEBUG, "zmq_cmd_helper. len[%lu], category[%d], event[%s], content[%s]\n", strlen(content), category, event, content);
+    ast_debug(3, "zmq_cmd_helper. len[%lu], category[%d], event[%s], content[%s]\n", strlen(content), category, event, content);
 
     if(g_cmd_buf == NULL)
     {
@@ -96,7 +96,7 @@ static int zmq_cmd_helper(int category, const char *event, char *content)
     ret = ast_asprintf(&g_cmd_buf, "%s", tmp);
     if(ret == -1)
     {
-        ast_log(LOG_ERROR, "Could not allocate string. err[%d:%s]\n", errno, strerror(errno));
+        ERROR("Could not allocate string. err[%d:%s]\n", errno, strerror(errno));
         return 0;
     }
     ast_free(tmp);
@@ -120,7 +120,7 @@ static struct ast_json* parse_msg(char* msg)
     char* value;
     char* dump;
 
-    ast_log(AST_LOG_DEBUG, "Parse ami message. msg[%s]\n", msg);
+    ast_debug(3, "Parse ami message. msg[%s]\n", msg);
     if(msg == NULL)
     {
         return ast_json_null();
@@ -236,7 +236,7 @@ static struct ast_json* recv_parse(char* msg)
     j_out = ast_json_load_buf(msg, strlen(msg), &error);
     if(j_out == NULL)
     {
-        DEBUG("Could not convert json. msg[%s], err[%d,%s]\n", msg, error.line, error.text);
+        ERROR("Could not convert json. msg[%s], err[%d,%s]\n", msg, error.line, error.text);
         return NULL;
     }
     return j_out;
@@ -271,19 +271,19 @@ static void zmq_cmd_thread(void)
             usleep(100);    // just let's break
             continue;
         }
-        ast_log(AST_LOG_DEBUG, "Recv thread. ret[%d], opt[%ld], sock[%p]\n", ret, opt, g_app->sock_cmd);
+        ast_debug(3, "Recv thread. ret[%d], opt[%ld], sock[%p]\n", ret, opt, g_app->sock_cmd);
 
         ret = zmq_msg_init(&recv_msg);
         if(ret == -1)
         {
-            ast_log(AST_LOG_ERROR, "Could not initiate recv zmq_msg. err[%d:%s]\n", errno, strerror(errno));
+            ERROR("Could not initiate recv zmq_msg. err[%d:%s]\n", errno, strerror(errno));
             continue;
         }
 
         ret = zmq_msg_recv(&recv_msg, g_app->sock_cmd, 0);
         if(ret == -1)
         {
-            ast_log(AST_LOG_ERROR, "Could not receive data. err[%d:%s]\n", errno, strerror(errno));
+            ERROR("Could not receive data. err[%d:%s]\n", errno, strerror(errno));
             zmq_msg_close(&recv_msg);
             continue;
         }
@@ -308,14 +308,14 @@ static void zmq_cmd_thread(void)
         {
             ret = ast_asprintf(&res, "%s", "[{\"Response\":\"Error\"},{\"Message\":\"Internal error.\"}]");
         }
-        ast_json_unref(j_recv);
+        //ast_json_unref(j_recv);
 
         ret = zmq_send(g_app->sock_cmd, res, strlen(res), 0);
         if(ret == -1)
         {
             ast_log(AST_LOG_ERROR, "Could not send message. err[%d:%s]\n", errno, strerror(errno));
         }
-        ast_log(AST_LOG_DEBUG, "Response cmd result. ret[%d], msg[%s]\n", ret, res);
+        ast_debug(3, "Response cmd result. ret[%d], msg[%s]\n", ret, res);
 
         ast_json_free(res);
     }
@@ -396,7 +396,7 @@ static int unload_module(void)
     _unload_module();
 
     ret = ast_cli_unregister_multiple(cli_zmq_manager_evt, ARRAY_LEN(cli_zmq_manager_evt));
-    ast_log(LOG_DEBUG, "unregister finished. ret[%d]\n", ret);
+    ast_debug(3, "unregister finished. ret[%d]\n", ret);
 
     return AST_FORCE_SOFT;
 }
@@ -413,7 +413,7 @@ static int _load_module(void)
 
     g_app = ast_calloc(1, sizeof(struct app_));
 
-    DEBUG("%s\n", "Loading zmq manager Config");
+    ast_debug(3, "%s\n", "Loading zmq manager Config");
     ret = ast_asprintf(&g_app->config_name, "%s", "zmq_manager.conf");
     cfg = ast_config_load(g_app->config_name, config_flags);
     if ((cfg == NULL) || (cfg == CONFIG_STATUS_FILEINVALID))
@@ -430,19 +430,19 @@ static int _load_module(void)
     ret  = load_config_string(cfg, "global", "addr_cmd", &g_app->addr_cmd, "tcp://*:967");
     if(ret < 0)
     {
-        DEBUG("%s\n", "Could not load connection_string");
+        ast_debug(3, "%s\n", "Could not load connection_string");
         return AST_MODULE_LOAD_FAILURE;
     }
-    DEBUG("cmd address. addr[%s]\n", ast_str_buffer(g_app->addr_cmd));
+    ast_debug(3, "cmd address. addr[%s]\n", ast_str_buffer(g_app->addr_cmd));
 
     // evt socket
     ret  = load_config_string(cfg, "global", "addr_evt", &g_app->addr_evt, "tcp://*:968");
     if(ret < 0)
     {
-        DEBUG("%s\n", "Could not load connection_string");
+        ast_debug(3, "%s\n", "Could not load connection_string");
         return AST_MODULE_LOAD_FAILURE;
     }
-    DEBUG("evt address. addr[%s]\n", ast_str_buffer(g_app->addr_evt));
+    ast_debug(3, "evt address. addr[%s]\n", ast_str_buffer(g_app->addr_evt));
 
     ast_config_destroy(cfg);
 
@@ -486,7 +486,7 @@ static int _load_module(void)
         return false;
     }
 
-    DEBUG("%s\n", "About to call ast_zmq_start");
+    ast_debug(3, "%s\n", "About to call ast_zmq_start");
     ret = ast_zmq_start();
 
     return AST_MODULE_LOAD_SUCCESS;
@@ -508,13 +508,13 @@ static int load_module(void)
         return AST_MODULE_LOAD_FAILURE;
     }
 
-    ast_log(LOG_DEBUG, "Load correctly.\n");
+    ast_debug(3, "Load correctly.\n");
     ret = ast_cli_register_multiple(cli_zmq_manager_evt, ARRAY_LEN(cli_zmq_manager_evt));
 
     // Send load complete event.
     // Let's break 2 seconds to waiting for connections.
     sleep(2);
-    ast_log(LOG_DEBUG, "Sending load zmq module message. \n");
+    ast_debug(3, "Sending load zmq module message. \n");
     ret = zmq_send(g_app->sock_evt, "{\"Event\": \"LoadZmq\"}", strlen("{\"Event\": \"LoadZmq\"}"), 0);
 
     return AST_MODULE_LOAD_SUCCESS;
@@ -545,7 +545,7 @@ static char* zmq_cmd_handler(struct ast_json* j_recv)
         ast_log(AST_LOG_ERROR, "Could dump string.\n");
         return NULL;
     }
-    ast_log(AST_LOG_DEBUG, "zmq_cmd_handler. msg[%s]\n", tmp);
+    ast_debug(3, "zmq_cmd_handler. msg[%s]\n", tmp);
     ast_json_free(tmp);
 
     // Get action
@@ -575,7 +575,7 @@ static char* zmq_cmd_handler(struct ast_json* j_recv)
         ast_json_unref(j_tmp);
     }
 
-    DEBUG("action command. command[%s]\n", str_cmd);
+    ast_debug(3, "action command. command[%s]\n", str_cmd);
 
     // Set hook
     hook = ast_calloc(1, sizeof(struct manager_custom_hook));
@@ -594,7 +594,7 @@ static char* zmq_cmd_handler(struct ast_json* j_recv)
         ast_log(AST_LOG_ERROR, "Could not hook. ret[%d], err[%d:%s]\n", ret, errno, strerror(errno));
         return NULL;
     }
-    ast_log(AST_LOG_DEBUG, "End hook. ret[%d]\n", ret);
+    ast_debug(3, "End hook. ret[%d]\n", ret);
 
     j_res = parse_msg(g_cmd_buf);
 
@@ -605,7 +605,7 @@ static char* zmq_cmd_handler(struct ast_json* j_recv)
         ast_log(AST_LOG_ERROR, "Could parse message.\n");
         return NULL;
     }
-    ast_log(AST_LOG_DEBUG, "Parse complete.\n");
+    ast_debug(3, "Parse complete.\n");
 
     return res;
 }
@@ -666,7 +666,7 @@ static int zmq_evt_helper(int category, const char *event, char *content)
     char    tmp_line[4096];
     char*   tmp_org;
 
-    DEBUG("zmq_evt_handler. category[%d], event[%s], content[%s]\n", category, event, content);
+    ast_debug(3, "zmq_evt_handler. category[%d], event[%s], content[%s]\n", category, event, content);
     i = j = 0;
     memset(tmp_line, 0x00, sizeof(tmp_line));
 
@@ -681,7 +681,7 @@ static int zmq_evt_helper(int category, const char *event, char *content)
                 break;
             }
 
-            DEBUG("Check value. tmp_line[%s]\n", tmp_line);
+            ast_debug(3, "Check value. tmp_line[%s]\n", tmp_line);
             value = ast_strdup(tmp_line);
             tmp_org = value;
 
@@ -705,7 +705,7 @@ static int zmq_evt_helper(int category, const char *event, char *content)
 
     buf_send = ast_json_dump_string(j_out);
     ret = zmq_send(g_app->sock_evt,  buf_send, strlen(buf_send), 0);
-    DEBUG("Send event. ret[%d], buf[%s]\n", ret, buf_send);
+    ast_debug(3, "Send event. ret[%d], buf[%s]\n", ret, buf_send);
 
     ast_json_free(buf_send);
     ast_json_unref(j_out);

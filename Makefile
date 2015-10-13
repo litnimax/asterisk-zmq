@@ -4,8 +4,8 @@
 CC = gcc
 UNAME := $(shell uname)
 # -Wall -Wstrict-prototypes -Wmissing-prototypes -Wmissing-declarations
-BASICOPTS = -Wall -g -pthread -pipe -g3 -O6 -fPIC -DAST_MODULE=\"res_zmq_manager\"
-CFLAGS = $(BASICOPTS)
+BASICOPTS = -Wall -g -pthread -pipe -g3 -O6 -fPIC -DAST_MODULE=\"res_zmq_manager\" 
+CFLAGS := $(CFLAGS) $(BASICOPTS)
 
 # Define the target directories.
 TARGETDIR_res_zmq_manager.so=build
